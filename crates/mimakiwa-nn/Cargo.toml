@@ -1,0 +1,8 @@
+[package]
+name = "mimakiwa-nn"
+version = "0.1.0"
+edition = "2021"
+description = "Neural network layers backed by the Burn ML framework"
+
+[dependencies]
+burn = { workspace = true }

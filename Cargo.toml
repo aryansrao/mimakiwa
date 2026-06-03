@@ -1,0 +1,46 @@
+[workspace]
+members = [
+    "crates/mimakiwa-core",
+    "crates/mimakiwa-nn",
+    "crates/mimakiwa-model",
+    "crates/mimakiwa-tokenizer",
+    "crates/mimakiwa-train",
+    "crates/mimakiwa-self-learn",
+    "crates/mimakiwa-search",
+    "crates/mimakiwa-gui",
+    "crates/mimakiwa-cloud-train",
+]
+default-members = ["crates/mimakiwa-gui"]
+resolver = "2"
+
+[workspace.dependencies]
+rand = "0.8"
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+anyhow = "1.0"
+thiserror = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+
+burn = { version = "0.16", features = ["wgpu", "ndarray", "autodiff"] }
+
+mimakiwa-core       = { path = "crates/mimakiwa-core" }
+mimakiwa-nn         = { path = "crates/mimakiwa-nn" }
+mimakiwa-model      = { path = "crates/mimakiwa-model" }
+mimakiwa-tokenizer  = { path = "crates/mimakiwa-tokenizer" }
+mimakiwa-train      = { path = "crates/mimakiwa-train" }
+mimakiwa-self-learn = { path = "crates/mimakiwa-self-learn" }
+mimakiwa-search     = { path = "crates/mimakiwa-search" }
+
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }
+scraper = "0.22"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 1

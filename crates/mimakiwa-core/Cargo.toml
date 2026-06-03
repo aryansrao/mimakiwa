@@ -1,0 +1,8 @@
+[package]
+name = "mimakiwa-core"
+version = "0.1.0"
+edition = "2021"
+description = "Thin re-export shim — burn replaces hand-rolled math"
+
+[dependencies]
+burn = { workspace = true }

@@ -1,0 +1,22 @@
+[package]
+name = "mimakiwa-gui"
+version = "0.1.0"
+edition = "2021"
+description = "Mimakiwa AI — desktop GUI"
+
+[[bin]]
+name = "mimakiwa"
+path = "src/main.rs"
+
+[dependencies]
+mimakiwa-model      = { workspace = true }
+mimakiwa-tokenizer  = { workspace = true }
+mimakiwa-train      = { workspace = true }
+mimakiwa-self-learn = { workspace = true }
+mimakiwa-search     = { workspace = true }
+iced = { version = "0.13", features = ["tokio", "svg"] }
+anyhow = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }

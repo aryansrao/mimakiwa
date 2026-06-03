@@ -1,0 +1,10 @@
+[package]
+name = "mimakiwa-tokenizer"
+version = "0.1.0"
+edition = "2021"
+description = "BPE tokenizer built from scratch for Mimakiwa"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

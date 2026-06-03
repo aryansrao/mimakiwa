@@ -1,0 +1,15 @@
+[package]
+name = "mimakiwa-train"
+version = "0.1.0"
+edition = "2021"
+description = "Training infrastructure using Burn's autograd and AdamW optimizer"
+
+[dependencies]
+mimakiwa-model = { workspace = true }
+mimakiwa-tokenizer = { workspace = true }
+burn = { workspace = true }
+rand = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

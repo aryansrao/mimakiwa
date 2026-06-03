@@ -1,0 +1,20 @@
+[package]
+name = "mimakiwa-cloud-train"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone cloud training binary — NdArray backend, no GPU drivers needed"
+
+[[bin]]
+name = "cloud-train"
+path = "src/main.rs"
+
+[dependencies]
+# Reuse workspace burn (ndarray now included in workspace features)
+burn              = { workspace = true }
+mimakiwa-model    = { workspace = true }
+mimakiwa-tokenizer= { workspace = true }
+serde             = { version = "1.0", features = ["derive"] }
+serde_json        = "1.0"
+anyhow            = "1.0"
+rand              = "0.8"
+reqwest           = { version = "0.12", features = ["blocking", "rustls-tls"], default-features = false }

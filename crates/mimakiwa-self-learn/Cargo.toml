@@ -1,0 +1,10 @@
+[package]
+name = "mimakiwa-self-learn"
+version = "0.1.0"
+edition = "2021"
+description = "SEAL experience buffer — stores conversation history for future fine-tuning"
+
+[dependencies]
+rand = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
