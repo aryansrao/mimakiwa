@@ -25,16 +25,18 @@ use serde::{Deserialize, Serialize};
 use std::{io::Read, path::PathBuf};
 
 // ── Backend selection ─────────────────────────────────────────────────────────
+// --features gpu  → WGPU (Vulkan on Linux/Colab T4, Metal on Mac)
+// default         → NdArray (pure CPU, works everywhere)
 
-#[cfg(feature = "cuda")]
+#[cfg(feature = "gpu")]
 mod back {
-    use burn::backend::{libtorch::LibTorchDevice, Autodiff, LibTorch};
-    pub type CB  = Autodiff<LibTorch>;
-    pub type Dev = LibTorchDevice;
-    pub fn device() -> Dev { LibTorchDevice::Cuda(0) }
+    use burn::backend::{Autodiff, Wgpu};
+    pub type CB  = Autodiff<Wgpu>;
+    pub type Dev = <CB as burn::tensor::backend::Backend>::Device;
+    pub fn device() -> Dev { Default::default() }
 }
 
-#[cfg(not(feature = "cuda"))]
+#[cfg(not(feature = "gpu"))]
 mod back {
     use burn::backend::{Autodiff, NdArray};
     pub type CB  = Autodiff<NdArray>;
@@ -195,7 +197,7 @@ fn main() -> Result<()> {
     let seq:   usize = get("--seq",   &def_seq.to_string()).parse().unwrap_or(def_seq);
     let lr:    f32   = get("--lr",    &def_lr.to_string()).parse().unwrap_or(def_lr);
 
-    let backend_name = if cfg!(feature = "cuda") { "LibTorch/CUDA" } else { "NdArray/CPU" };
+    let backend_name = if cfg!(feature = "gpu") { "WGPU/GPU" } else { "NdArray/CPU" };
     std::fs::create_dir_all(&out_dir)?;
     eprintln!("Mimakiwa cloud trainer | backend={backend_name} | model={model_size} | steps={steps} batch={batch} seq={seq}");
 

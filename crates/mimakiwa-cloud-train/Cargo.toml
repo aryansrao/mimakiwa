@@ -2,7 +2,7 @@
 name = "mimakiwa-cloud-train"
 version = "0.1.0"
 edition = "2021"
-description = "Standalone cloud training binary — NdArray backend, no GPU drivers needed"
+description = "Standalone cloud training binary — CPU or GPU via WGPU/Vulkan"
 
 [[bin]]
 name = "cloud-train"
@@ -20,6 +20,6 @@ reqwest           = { version = "0.12", features = ["blocking", "rustls-tls"], d
 
 [features]
 default = []
-# Enable with: cargo build --features cuda
-# Requires LIBTORCH env var pointing to PyTorch installation (see Colab notebook)
-cuda = ["burn/tch"]
+# GPU via WGPU — uses Vulkan on Linux (Colab T4), Metal on Mac
+# Build: cargo build --release --features gpu
+gpu = []
