@@ -1,15 +1,18 @@
 //! Standalone cloud training binary for Mimakiwa.
-//! Uses NdArray (pure CPU) backend — no GPU drivers needed.
-//! Weights saved with CompactRecorder are compatible with the Mac WGPU loader.
+//!
+//! Backends:
+//!   default (no features) — NdArray, pure CPU, works everywhere
+//!   --features cuda       — LibTorch CUDA, uses GPU (T4 on Colab)
+//!
+//! Weights saved with CompactRecorder are backend-portable → loads on Mac WGPU.
 //!
 //! Usage (all flags optional):
-//!   cloud-train [--dataset-url URL] [--steps N] [--batch N] [--seq N]
-//!               [--vocab N] [--lr F] [--max-mb N] [--out DIR]
+//!   cloud-train [--model compact|small] [--dataset-url URL] [--steps N]
+//!               [--batch N] [--seq N] [--vocab N] [--lr F] [--max-mb N] [--out DIR]
 
 use anyhow::Result;
 use burn::{
-    backend::{Autodiff, NdArray},
-    module::Module as _,  // brings save_file into scope
+    module::Module as _,
     nn::loss::CrossEntropyLossConfig,
     optim::{AdamWConfig, GradientsParams, Optimizer},
     record::CompactRecorder,
@@ -21,9 +24,25 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{io::Read, path::PathBuf};
 
-// NdArray = pure CPU, works on any Linux without GPU drivers
-type CB = Autodiff<NdArray>;
-type Dev = <CB as Backend>::Device;
+// ── Backend selection ─────────────────────────────────────────────────────────
+
+#[cfg(feature = "cuda")]
+mod back {
+    use burn::backend::{libtorch::LibTorchDevice, Autodiff, LibTorch};
+    pub type CB  = Autodiff<LibTorch>;
+    pub type Dev = LibTorchDevice;
+    pub fn device() -> Dev { LibTorchDevice::Cuda(0) }
+}
+
+#[cfg(not(feature = "cuda"))]
+mod back {
+    use burn::backend::{Autodiff, NdArray};
+    pub type CB  = Autodiff<NdArray>;
+    pub type Dev = <CB as burn::tensor::backend::Backend>::Device;
+    pub fn device() -> Dev { Default::default() }
+}
+
+use back::{CB, Dev};
 
 // ── Dataset ───────────────────────────────────────────────────────────────────
 
@@ -158,19 +177,27 @@ fn main() -> Result<()> {
             .unwrap_or_else(|| default.to_string())
     };
 
-    let url       = get("--dataset-url",
+    let model_size    = get("--model",   "compact");  // compact | small
+    let url           = get("--dataset-url",
         "https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt");
-    let steps: usize  = get("--steps",  "20000").parse().unwrap_or(20000);
-    let batch: usize  = get("--batch",  "8").parse().unwrap_or(8);
-    let seq: usize    = get("--seq",    "256").parse().unwrap_or(256);
     let vocab: usize  = get("--vocab",  "8192").parse().unwrap_or(8192);
-    let lr: f32       = get("--lr",     "0.0003").parse().unwrap_or(3e-4);
     let max_mb: usize = get("--max-mb", "20").parse().unwrap_or(20);
     let out_dir       = get("--out",    "./model_out");
     let is_dolly      = url.contains("dolly");
 
+    // Model-size-based defaults (overridable per flag)
+    let (def_steps, def_batch, def_seq, def_lr) = match model_size.as_str() {
+        "small"  => (20_000usize, 4usize, 512usize, 2e-4f32),
+        _        => (20_000usize, 8usize, 256usize, 3e-4f32),
+    };
+    let steps: usize = get("--steps", &def_steps.to_string()).parse().unwrap_or(def_steps);
+    let batch: usize = get("--batch", &def_batch.to_string()).parse().unwrap_or(def_batch);
+    let seq:   usize = get("--seq",   &def_seq.to_string()).parse().unwrap_or(def_seq);
+    let lr:    f32   = get("--lr",    &def_lr.to_string()).parse().unwrap_or(def_lr);
+
+    let backend_name = if cfg!(feature = "cuda") { "LibTorch/CUDA" } else { "NdArray/CPU" };
     std::fs::create_dir_all(&out_dir)?;
-    eprintln!("Mimakiwa cloud trainer | backend=NdArray(CPU) | steps={steps} batch={batch} seq={seq}");
+    eprintln!("Mimakiwa cloud trainer | backend={backend_name} | model={model_size} | steps={steps} batch={batch} seq={seq}");
 
     // 1. Download dataset
     let raw = download(&url, max_mb)?;
@@ -192,10 +219,14 @@ fn main() -> Result<()> {
     if tokens.len() < seq + 2 { anyhow::bail!("corpus too small for seq={seq}"); }
     let dataset = Dataset::new(tokens, seq);
 
-    // 4. Build model — same architecture as Mac app, NdArray backend
-    let cfg = MimakiwaConfig::compact(tok.vocab_size());
-    eprintln!("[model] dim={} layers={} heads={} vocab={}", cfg.embed_dim, cfg.n_layers, cfg.n_heads, cfg.vocab_size);
-    let device: Dev = Default::default();
+    // 4. Build model
+    let cfg = match model_size.as_str() {
+        "small"  => MimakiwaConfig::small(tok.vocab_size()),
+        _        => MimakiwaConfig::compact(tok.vocab_size()),
+    };
+    eprintln!("[model] {} | dim={} layers={} heads={} vocab={}",
+        model_size, cfg.embed_dim, cfg.n_layers, cfg.n_heads, cfg.vocab_size);
+    let device: Dev = back::device();
     let mut model: Option<MimakiwaModelInner<CB>> = Some(MimakiwaModelInner::new(&cfg, &device));
     let mut optim = AdamWConfig::new().with_weight_decay(0.1).init();
     let warmup = (steps / 20).max(50);
